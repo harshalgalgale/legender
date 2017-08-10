@@ -1,14 +1,22 @@
 # -*- coding: utf-8 -*-
 import requests
+from PIL.PngImagePlugin import PngImageFile
 
 from nose.tools import (assert_equals, assert_in, assert_false,
-    assert_is_instance)
+    assert_is_instance, assert_is_not_none, assert_not_equal)
 from nose.tools import raises
+
 from legender import GeoServer
 
 GS_URL = 'https://gsavalik.envir.ee/geoserver'
+
 GS_WORKSPACE = 'keskkonnainfo'
 GS_LYRNAME = 'keskkonnainfo:ristipuud'
+GS_LYRGEOMNAME = 'shape'
+GS_LYRBBOX_POINT = [661431,6399178,661631,6399378]
+GS_LYRBBOX_POLYGON = [647490,6387380,647690,6387580]
+GS_LYRSRS = 'EPSG:3301'
+
 GS_WORKSPACE_NO_WFS = 'baasandmed'
 GS_LYRNAME_NO_WFS = 'baasandmed:black'
 
@@ -162,3 +170,39 @@ def test_get_feature_polygon():
         assert_in('id', feature)
         assert_in('geometry', feature)
         assert_in(feature['geometry']['type'], ['Polygon', 'MultiPolygon'])
+
+###
+# WMS GetMap
+###
+
+def test_get_map_gs_point():
+    out_filename = 'test_img/get_map_gs_point.png'
+    gs = GeoServer(GS_URL)
+    inputs = (GS_LYRNAME, 'Point', GS_LYRGEOMNAME,
+        GS_LYRBBOX_POINT, GS_LYRSRS)
+    img = gs.get_map(*inputs)
+    print 'Test GetMap with previously checked location (point feature)'
+    assert_is_instance(img, PngImageFile)
+    assert_is_not_none(img.getbbox())
+    img.save(out_filename, 'PNG')
+
+def test_get_map_gs_polygon():
+    out_filename = 'test_img/get_map_gs_polygon.png'
+    gs = GeoServer(GS_URL)
+    inputs = (GS_LYRNAME, 'Polygon', GS_LYRGEOMNAME,
+        GS_LYRBBOX_POLYGON, GS_LYRSRS)
+    img = gs.get_map(*inputs)
+    print 'Test GetMap with previously checked location (polygon feature)'
+    assert_is_instance(img, PngImageFile)
+    assert_is_not_none(img.getbbox())
+    img.save(out_filename, 'PNG')
+
+def test_get_map_gs_linestring():
+    out_filename = 'test_img/get_map_gs_linestring.png'
+    gs = GeoServer(GS_URL)
+    inputs = (GS_LYRNAME, 'LineString', GS_LYRGEOMNAME,
+        GS_LYRBBOX_POLYGON, GS_LYRSRS)
+    img = gs.get_map(*inputs)
+    print 'Test GetMap with previously checked location (linestring feature)'
+    assert_is_instance(img, PngImageFile)
+    img.save(out_filename, 'PNG')

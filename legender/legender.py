@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 import requests
 
+from PIL import Image
+from StringIO import StringIO
+
 class GeoServer(object):
     def __init__(self, url, **kwargs):
         self.session = requests.Session()
@@ -26,6 +29,33 @@ class GeoServer(object):
             return None
         feature = features[0]
         return feature
+
+    def get_map(self, layername, geometrytype, geometryname, bbox, srs,
+        transparent=True, additional_filter=None, featureid=None,
+        style='default', size=(100, 100)):
+        """Query WMS endpoint for a piece of map layer to be used for legend."""
+        workspace, _ = self.split_layername(layername)
+        if featureid != None:
+            cql_filter = None
+        else:
+            cql_filter = self.construct_cql_for_geometrytype(
+                geometrytype, geometryname)
+            # @TODO apply additional_filter
+        width, height = size
+        params = dict(
+            layers=layername,
+            bbox=','.join(['%s' % coord for coord in bbox]),
+            srs=srs,
+            transparent=transparent,
+            cql_filter=cql_filter,
+            featureid=featureid,
+            style=style,
+            width=width,
+            height=height
+        )
+        data = self._do_wms_get_map(workspace, **params)
+        img = Image.open(StringIO(data))
+        return img
 
     def construct_cql_for_geometrytype(self, geometrytype, geometry_name):
         """Constructs a geometry type CQL filter for use in GetFeature/GetMap
@@ -114,6 +144,18 @@ class GeoServer(object):
         kwargs.update(params)
         return self._do_query('json', url, **kwargs)
 
+    def _do_wms_get_map(self, workspace, **kwargs):
+        """Prepare and submit a GetMap HTTP Get query."""
+        url = self.service_url(workspace)
+        params = dict(
+            service='WMS',
+            request='GetMap',
+            version='1.1.0',
+            format='image/png'
+        )
+        kwargs.update(params)
+        return self._do_query('content', url, **kwargs)
+
     def _do_query(self, returns, url, **kwargs):
         """Do a HTTP GET query, return response.
 
@@ -128,10 +170,12 @@ class GeoServer(object):
         r.raise_for_status()
         fn = getattr(r, returns)
         try:
-            response = fn()
+            if callable(fn):
+                return fn()
+            return fn
         except Exception as e:
             raise ValueError(
-                'Tried to get %s from %s, instead got gibberish.' % (
+                'Tried to get requests.%s from %s, instead got gibberish.' % (
                     returns, r.url
                 ))
         return response
