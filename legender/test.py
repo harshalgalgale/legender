@@ -135,6 +135,30 @@ def test_get_feature_point():
     inputs = (GS_LYRNAME, 'Point')
     print 'Test GetFeature on %s for sample Point/MultiPoint' % GS_LYRNAME
     feature = gs.get_feature(*inputs)
-    assert_is_instance(feature, dict)
-    assert_in('id', feature)
-    assert_in('geometry', feature)
+    if feature != None:
+        assert_is_instance(feature, dict)
+        assert_in('id', feature)
+        assert_in('geometry', feature)
+        assert_in(feature['geometry']['type'], ['Point', 'MultiPoint'])
+
+def test_get_feature_linestring():
+    gs = GeoServer(GS_URL)
+    inputs = (GS_LYRNAME, 'LineString')
+    print 'Test GetFeature on %s for sample LineString/MultiLineString' % GS_LYRNAME
+    feature = gs.get_feature(*inputs)
+    if feature != None:
+        assert_is_instance(feature, dict)
+        assert_in('id', feature)
+        assert_in('geometry', feature)
+        assert_in(feature['geometry']['type'], ['LineString', 'MultiLineString'])
+
+def test_get_feature_polygon():
+    gs = GeoServer(GS_URL)
+    inputs = (GS_LYRNAME, 'Polygon')
+    print 'Test GetFeature on %s for sample Polygon/MultiPolygon' % GS_LYRNAME
+    feature = gs.get_feature(*inputs)
+    if feature != None:
+        assert_is_instance(feature, dict)
+        assert_in('id', feature)
+        assert_in('geometry', feature)
+        assert_in(feature['geometry']['type'], ['Polygon', 'MultiPolygon'])
