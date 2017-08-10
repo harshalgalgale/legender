@@ -13,15 +13,51 @@ class GeoServer(object):
     def get_feature(self, layername, geometrytype):
         """Query for a sample feature of from WFS endpoint"""
         workspace, _ = self.split_layername(layername)
-        preflight_check = self.do_preflight_wfs(workspace, layername)
+        geometry_name = self.do_preflight_checks(workspace, layername)
+        params = dict(
+            typename=layername,
+            count=1,
+            cql_filter=self.construct_cql_for_geometrytype(
+                geometrytype,geometry_name)
+        )
+        fc = self._do_wfs_get_feature(workspace, **params)
+        features = fc['features']
+        if len(features) == 0:
+            return None
+        feature = features[0]
+        return feature
 
-    def do_preflight_wfs(self, workspace, layername):
-        """Do some pre-flight WFS checks
+    def construct_cql_for_geometrytype(self, geometrytype, geometry_name):
+        """Constructs a geometry type CQL filter for use in GetFeature/GetMap
+        requests.
+        """
+        known = ['Point', 'Polygon', 'LineString']
+        gt = geometrytype.lstrip('Multi')
+        assert gt in known, "'%s' is not a known geometrytype: [%s]" % (
+            gt, ','.join(known)
+        )
+        cql = "((geometryType(%s)='%s')OR(geometryType(%s)='Multi%s'))" % (
+            geometry_name, gt, geometry_name, gt
+        )
+        return cql
+
+    def do_preflight_checks(self, workspace, layername):
+        """Do WFS preflight checks
 
         a. is WFS supported?
         b. does the layer contain any features?
         c. what's the geom property name?
         """
+        preflight_check = self.do_preflight_wfs(workspace, layername)
+        assert preflight_check['wfs_available'] == True, "WFS endpoint not available"
+        if preflight_check['features_present'] == False:
+            raise IOError(
+                'No features present @ %s' % layername
+            )
+        return preflight_check['geometry_name']
+
+    def do_preflight_wfs(self, workspace, layername):
+        """Request data for pre-flight WFS checks"""
         params = dict(
             typename=layername,
             count=1
@@ -33,13 +69,14 @@ class GeoServer(object):
             checks['wfs_available'] = True
         except ValueError as ve:
             checks['wfs_available'] = False
-        features = fc['features']
-        if len(features) == 0:
-            checks['features_present'] = False
-            checks['geometry_name'] = None
         else:
-            checks['features_present'] = True
-            checks['geometry_name'] = features[0]['geometry_name']
+            features = fc['features']
+            if len(features) == 0:
+                checks['features_present'] = False
+                checks['geometry_name'] = None
+            else:
+                checks['features_present'] = True
+                checks['geometry_name'] = features[0]['geometry_name']
         return checks
 
     def split_layername(self, layername):
@@ -66,6 +103,7 @@ class GeoServer(object):
         return url
 
     def _do_wfs_get_feature(self, workspace, **kwargs):
+        """Prepare and submit a GetFeature HTTP Get query."""
         url = self.service_url(workspace)
         params = dict(
             service='WFS',
@@ -77,6 +115,12 @@ class GeoServer(object):
         return self._do_query('json', url, **kwargs)
 
     def _do_query(self, returns, url, **kwargs):
+        """Do a HTTP GET query, return response.
+
+        @param returns: defines the requests.Response method to call
+            on the returned data (e.g. C{json}, C{xml}, C{text}, etc).
+        @type returns: C{str}
+        """
         r = self.session.get(
             url,
             params=kwargs
@@ -86,9 +130,8 @@ class GeoServer(object):
         try:
             response = fn()
         except Exception as e:
-            request = r.url
             raise ValueError(
                 'Tried to get %s from %s, instead got gibberish.' % (
-                    returns, request
+                    returns, r.url
                 ))
         return response
