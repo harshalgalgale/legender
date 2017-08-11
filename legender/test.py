@@ -134,6 +134,18 @@ def test_cql_filter_construct_geometrytype_unknown_type():
     print 'Test CQL geometrytype filter construct for unknown type ("LinearRing")'
     gs.construct_cql_for_geometrytype(*inputs)
 
+def test_sql_filter_add_additional():
+    gs = GeoServer(GS_URL)
+    inputs = ('Point', 'shape')
+    cql_filter = gs.construct_cql_for_geometrytype(*inputs)
+    additional_inputs = (cql_filter, 'the_meaning=42')
+    expect = "(((geometryType(shape)='Point')OR(geometryType(shape)='MultiPoint'))AND(the_meaning=42))"
+    print 'Test CQL geometrytype filter construct and add aditional'
+    tools.assert_equals(
+        gs.add_additional_filter(*additional_inputs),
+        expect
+    )
+
 ###
 # WFS GetFeature
 ###

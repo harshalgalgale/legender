@@ -13,15 +13,17 @@ class GeoServer(object):
             self.session.auth = (_user, _pass)
         self.url = url.rstrip('/')
 
-    def get_feature(self, layername, geometrytype):
+    def get_feature(self, layername, geometrytype, additional_filter=None):
         """Query for a sample feature of from WFS endpoint"""
         workspace, _ = self.split_layername(layername)
         geometry_name = self.do_preflight_checks(workspace, layername)
+        cql_filter = self.construct_cql_for_geometrytype(
+            geometrytype,geometry_name)
+        cql_filter = self.add_additional_filter(cql_filter, additional_filter)
         params = dict(
             typename=layername,
             count=1,
-            cql_filter=self.construct_cql_for_geometrytype(
-                geometrytype,geometry_name)
+            cql_filter=cql_filter
         )
         fc = self._do_wfs_get_feature(workspace, **params)
         features = fc['features']
@@ -40,7 +42,7 @@ class GeoServer(object):
         else:
             cql_filter = self.construct_cql_for_geometrytype(
                 geometrytype, geometryname)
-            # @TODO apply additional_filter
+            cql_filter = self.add_additional_filter(cql_filter, additional_filter)
         width, height = size
         params = dict(
             layers=layername,
@@ -56,6 +58,13 @@ class GeoServer(object):
         data = self._do_wms_get_map(workspace, **params)
         img = Image.open(StringIO(data))
         return img
+
+    def add_additional_filter(self, cql_filter, additional_filter):
+        if additional_filter == None:
+            return cql_filter
+        # just stack geometry_type filtering and additional with AND for now
+        cql_filter = '(%sAND(%s))' % (cql_filter, additional_filter)
+        return cql_filter
 
     def construct_cql_for_geometrytype(self, geometrytype, geometry_name):
         """Constructs a geometry type CQL filter for use in GetFeature/GetMap
@@ -184,6 +193,7 @@ class GeoServer(object):
 class Legend(object):
     def __init__(self, cls, url, layername, conf={}):
         self.server = cls(url)
+        self.layername = layername
         self.title = conf.get('title', layername)
         self.styles = conf.get('styles', ['default'])
         self.filter = conf.get('filter', None)
