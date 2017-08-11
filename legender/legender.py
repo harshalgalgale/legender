@@ -179,3 +179,13 @@ class GeoServer(object):
                     returns, r.url
                 ))
         return response
+
+
+class Legend(object):
+    def __init__(self, cls, url, layername, conf={}):
+        self.server = cls(url)
+        self.title = conf.get('title', layername)
+        self.styles = conf.get('styles', ['default'])
+        self.filter = conf.get('filter', None)
+        self.bbox = conf.get('bbox', None)
+        self.srs = conf.get('srs', None)
