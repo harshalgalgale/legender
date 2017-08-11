@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
-import requests
+import os, requests
 
-from PIL import Image
+from PIL import Image, ImageDraw, ImageOps
 from StringIO import StringIO
+from shapely.geometry import asShape, Point
 
 class GeoServer(object):
     def __init__(self, url, **kwargs):
@@ -70,6 +71,8 @@ class GeoServer(object):
         """Constructs a geometry type CQL filter for use in GetFeature/GetMap
         requests.
         """
+        if geometry_name == None:
+            return
         known = ['Point', 'Polygon', 'LineString']
         gt = geometrytype.lstrip('Multi')
         assert gt in known, "'%s' is not a known geometrytype: [%s]" % (
@@ -191,6 +194,7 @@ class GeoServer(object):
 
 
 class Legend(object):
+    _gutter = 10
     def __init__(self, cls, url, layername, conf={}):
         self.server = cls(url)
         self.layername = layername
@@ -199,3 +203,111 @@ class Legend(object):
         self.filter = conf.get('filter', None)
         self.bbox = conf.get('bbox', None)
         self.srs = conf.get('srs', None)
+        # NB! srs needs to be set in any case!
+        # unless we dive into WMS Capabilities, brrrrr....
+
+    def create_thumbnails(self, path):
+        """Get and merge thumbnails for this configuration.
+
+        Do styling things here aswell (e.g. add titles and whatnot)
+        """
+        for stylename in self.styles:
+            filename = '%s__%s.png' % (
+                ''.join([s for s in self.layername if s not in ':.,']),
+                ''.join([s for s in stylename if s not in ':.,'])
+            )
+            thumbs = []
+            for geometrytype in ['Point', 'LineString', 'Polygon']:
+                try:
+                    thumb = self._create_thumbnail(
+                        stylename, geometrytype, self.filter
+                    )
+                except AssertionError as ae:
+                    pass
+                else:
+                    if not self.is_empty_image(thumb):
+                        thumb = self.apply_mask(thumb)
+                        thumbs.append(thumb)
+            img = self.merge_thumbnails(thumbs)
+            if img != None:
+                img.save(os.path.join(path, filename), "PNG")
+
+    def apply_mask(self, thumb):
+        """Make thumbnail round (that's all hip now, ain't it?), add outline."""
+        width, height = thumb.size
+        # antialias
+        bigsize = (width * 4, height * 4)
+        linewidth = 12
+        mask = Image.new('RGBA', bigsize, (255, 255, 255, 255))
+        draw = ImageDraw.Draw(mask)
+        draw.ellipse((0, 0) + bigsize, fill=(27, 29, 28, 255))
+        draw.ellipse(
+            (linewidth, linewidth) + (bigsize[0] - linewidth, bigsize[1] - linewidth),
+            fill=(255, 255, 255, 0))
+        mask = mask.resize(thumb.size, Image.ANTIALIAS)
+        thumb.paste(mask, (0, 0), mask)
+        return thumb
+
+    def is_empty_image(self, img):
+        """Check if the returned image is completely black/white."""
+        extr = img.convert("L").getextrema()
+        if extr in [(0, 0), (255, 255)]:
+            return True
+        return False
+
+    def merge_thumbnails(self, thumbs=[]):
+        """Merge getmap thumbnails into one image."""
+        n = len(thumbs)
+        if n == 0:
+            return
+        gutter = self._gutter
+        width, height = ((100 * n) + gutter * n + gutter, 100 + gutter * 2)
+        img = Image.new("RGBA", (width, height), (255, 255, 255, 255))
+        for i, thumb in enumerate(thumbs):
+            location = ((i * 100) + gutter + (i * gutter), gutter)
+            img.paste(thumb, location)
+        return img
+
+    def _create_thumbnail(self, stylename, geometrytype, filter):
+        """Get image data and make a thumbnail for a layer for this style and
+        geometry_type.
+        """
+        if self.bbox == None:
+            # will try to get bbox from WFS
+            feature = self.server.get_feature(
+                self.layername, geometrytype, self.filter)
+            assert feature != None, "No WFS %s features returned for layer '%s' using cql_filter '%s'" % (
+                geometrytype, self.layername, self.filter
+            )
+            bbox = self.get_bbox_from_feature(feature)
+            geometry_name = feature.get('geometry_name')
+        else:
+            bbox = self.bbox
+        return self.server.get_map(self.layername, geometrytype, geometry_name,
+            bbox, self.srs,
+            transparent=False, additional_filter=None, featureid=None,
+            style=stylename, size=(100, 100))
+
+    def get_bbox_from_feature(self, feature):
+        """Some shapely magic.
+
+        NB! geometry coordinates expected to be in meters! This (i.e
+        buffer_size) should be  either configurable, or deductible from
+        layer crs.
+        """
+        assert "geometry" in feature, "This feature has no 'geometry' member"
+        buffer_size = 100
+        geometry = feature["geometry"]
+        geometry_type = feature["geometry"]["type"]
+        shape = asShape(geometry)
+        # @TODO what about multitypes?
+        if geometry_type == 'Point':
+            # center bbox over geometry
+            pnt = shape
+        elif geometry_type == 'LineString':
+            # center bbox over 1/2 distance of line
+            pnt = shape.interpolate(0.5, normalized=True)
+        elif geometry_type == 'Polygon':
+            # center bbox over whatever vertice?
+            pnt = Point(shape.boundary.coords[0])
+        return pnt.buffer(100).bounds

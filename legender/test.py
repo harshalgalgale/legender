@@ -275,3 +275,11 @@ def test_legend_properties_minimal():
 
     tools.assert_true(hasattr(l, 'srs'))
     tools.assert_is_none(l.srs)
+
+def test_legend_thumbnail_create_minimal():
+    legend_conf = {
+        "srs":"EPSG:3301"
+    }
+    print 'Test legend thumbnail creation with minimal config'
+    l = Legend(GeoServer, GS_URL, GS_LYRNAME, legend_conf)
+    l.create_thumbnails('./test_img')
