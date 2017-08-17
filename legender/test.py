@@ -283,3 +283,17 @@ def test_legend_thumbnail_create_minimal():
     print 'Test legend thumbnail creation with minimal config'
     l = Legend(GeoServer, GS_URL, GS_LYRNAME, legend_conf)
     l.create_thumbnails('./test_img')
+
+@tools.raises(AttributeError)
+def test_legend_thumbnail_create_minimal_no_srs():
+    legend_conf = {}
+    print 'Test legend thumbnail creation with minimal config, no srs'
+    l = Legend(GeoServer, GS_URL, GS_LYRNAME, legend_conf)
+    l.create_thumbnails('./test_img')
+
+@tools.raises(AttributeError)
+def test_legend_thumbnail_create_with_bbox_no_srs():
+    legend_conf = {"bbox":[1,2,3,4]}
+    print 'Test legend thumbnail creation with minimal config, no srs'
+    l = Legend(GeoServer, GS_URL, GS_LYRNAME, legend_conf)
+    l.create_thumbnails('./test_img')

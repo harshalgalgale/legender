@@ -283,6 +283,10 @@ class Legend(object):
             geometry_name = feature.get('geometry_name')
         else:
             bbox = self.bbox
+        if self.srs == None:
+            raise AttributeError(
+                "SRS (e.g 'EPSG:4326') not supplied in init conf, or undetermined from WFS request."
+            )
         return self.server.get_map(self.layername, geometrytype, geometry_name,
             bbox, self.srs,
             transparent=False, additional_filter=None, featureid=None,
