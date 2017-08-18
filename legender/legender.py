@@ -35,14 +35,14 @@ class GeoServer(object):
 
     def get_map(self, layername, geometrytype, geometryname, bbox, srs,
         transparent=True, additional_filter=None, featureid=None,
-        style='default', size=(100, 100)):
+        style='default', size=(100, 100), geometrytype_filtering=True):
         """Query WMS endpoint for a piece of map layer to be used for legend."""
         workspace, _ = self.split_layername(layername)
         if featureid != None:
             cql_filter = None
         else:
             cql_filter = self.construct_cql_for_geometrytype(
-                geometrytype, geometryname)
+                geometrytype, geometryname, geometrytype_filtering)
             cql_filter = self.add_additional_filter(cql_filter, additional_filter)
         width, height = size
         params = dict(
@@ -63,15 +63,20 @@ class GeoServer(object):
     def add_additional_filter(self, cql_filter, additional_filter):
         if additional_filter == None:
             return cql_filter
+        args = [cql_filter, additional_filter]
         # just stack geometry_type filtering and additional with AND for now
-        cql_filter = '(%sAND(%s))' % (cql_filter, additional_filter)
+        cql_filter = '(%s)' % ')AND('.join([a for a in args if a != None])
         return cql_filter
 
-    def construct_cql_for_geometrytype(self, geometrytype, geometry_name):
+    def construct_cql_for_geometrytype(self, geometrytype, geometry_name,
+            compose_filter=True):
         """Constructs a geometry type CQL filter for use in GetFeature/GetMap
         requests.
+
+        If compose_filter == C{False} or geometry_name == C{None} no filter
+        expression is created.
         """
-        if geometry_name == None:
+        if geometry_name == None or compose_filter != True:
             return
         known = ['Point', 'Polygon', 'LineString']
         gt = geometrytype.lstrip('Multi')
@@ -292,7 +297,7 @@ class Legend(object):
             transparent=False, additional_filter=None, featureid=None,
             style=stylename, size=(100, 100))
 
-    def get_bbox_from_feature(self, feature):
+    def get_bbox_from_feature(self, feature, buffer_size=100):
         """Some shapely magic.
 
         NB! geometry coordinates expected to be in meters! This (i.e
@@ -300,11 +305,9 @@ class Legend(object):
         layer crs.
         """
         assert "geometry" in feature, "This feature has no 'geometry' member"
-        buffer_size = 100
         geometry = feature["geometry"]
         geometry_type = feature["geometry"]["type"]
         shape = asShape(geometry)
-        # @TODO what about multitypes?
         if geometry_type == 'Point':
             # center bbox over geometry
             pnt = shape
@@ -313,5 +316,16 @@ class Legend(object):
             pnt = shape.interpolate(0.5, normalized=True)
         elif geometry_type == 'Polygon':
             # center bbox over whatever vertice?
-            pnt = Point(shape.boundary.coords[0])
-        return pnt.buffer(100).bounds
+            # Nope. get boundary and fall back to linestring :P
+            b = shape.boundary
+            return self.get_bbox_from_feature(
+                {"geometry": b.__geo_interface__, "type":"Feature"},
+                buffer_size)
+        elif geometry_type.startswith('Multi'):
+            # HA-HA-HA :D
+            # what the ???
+            geom = shape.geoms[0]
+            return self.get_bbox_from_feature(
+                {"geometry": geom.__geo_interface__, "type":"Feature"},
+                buffer_size)
+        return pnt.buffer(buffer_size).bounds

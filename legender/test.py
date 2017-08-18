@@ -120,6 +120,12 @@ def test_cql_filter_construct_geometrytype_polygon_passing_multi_is_ok():
         expect
     )
 
+def test_geometrytype_cql_filter_construct_supression():
+    gs = GeoServer(GS_URL)
+    inputs = ('MultiPolygon', 'shape', False)
+    print 'Test CQL geometrytype filter construct supression'
+    tools.assert_is_none(gs.construct_cql_for_geometrytype(*inputs))
+
 @tools.raises(AssertionError)
 def test_cql_filter_construct_geometrytype_polygon_wrong_spelling():
     gs = GeoServer(GS_URL)
@@ -134,17 +140,37 @@ def test_cql_filter_construct_geometrytype_unknown_type():
     print 'Test CQL geometrytype filter construct for unknown type ("LinearRing")'
     gs.construct_cql_for_geometrytype(*inputs)
 
-def test_sql_filter_add_additional():
+def test_cql_filter_add_additional():
     gs = GeoServer(GS_URL)
     inputs = ('Point', 'shape')
     cql_filter = gs.construct_cql_for_geometrytype(*inputs)
     additional_inputs = (cql_filter, 'the_meaning=42')
-    expect = "(((geometryType(shape)='Point')OR(geometryType(shape)='MultiPoint'))AND(the_meaning=42))"
-    print 'Test CQL geometrytype filter construct and add aditional'
+    expect = "(((geometryType(shape)='Point')OR(geometryType(shape)='MultiPoint')))AND(the_meaning=42)"
+    print 'Test CQL geometrytype filter construct and add additional'
     tools.assert_equals(
         gs.add_additional_filter(*additional_inputs),
         expect
     )
+
+def test_cql_filter_add_additional_no_geometrytype_filter():
+    gs = GeoServer(GS_URL)
+    inputs = ('Point', 'shape', False)
+    cql_filter = gs.construct_cql_for_geometrytype(*inputs)
+    additional_inputs = (cql_filter, 'the_meaning=42')
+    print 'Test geometrytype cql filter supression with additional filter'
+    expect = "(the_meaning=42)"
+    tools.assert_equals(
+        gs.add_additional_filter(*additional_inputs),
+        expect
+    )
+
+def test_cql_filter_add_no_additional_no_geometrytype_filter():
+    gs = GeoServer(GS_URL)
+    inputs = ('Point', 'shape', False)
+    cql_filter = gs.construct_cql_for_geometrytype(*inputs)
+    additional_inputs = (cql_filter, None)
+    print 'Test geometrytype cql filter supression with no additional filter'
+    tools.assert_is_none(gs.add_additional_filter(*additional_inputs))
 
 ###
 # WFS GetFeature
@@ -297,3 +323,142 @@ def test_legend_thumbnail_create_with_bbox_no_srs():
     print 'Test legend thumbnail creation with minimal config, no srs'
     l = Legend(GeoServer, GS_URL, GS_LYRNAME, legend_conf)
     l.create_thumbnails('./test_img')
+
+###
+# bbox creation from sample feature
+###
+
+def test_bbox_creation_point_default_buffer():
+    legend_conf = {}
+    print 'Test bbox creation for a point feature, default buffer sizer'
+    l = Legend(GeoServer, GS_URL, GS_LYRNAME, legend_conf)
+    inputs = (
+        {"type":"Feature", "geometry": {"type":"Point", "coordinates":[500, 500]}, "properties":{"id":0}},
+    )
+    expect = (400, 400, 600, 600)
+    tools.assert_equals(
+        l.get_bbox_from_feature(*inputs),
+        expect
+    )
+
+def test_bbox_creation_point_custom_buffer():
+    legend_conf = {}
+    print 'Test bbox creation for a point feature, custom buffer sizer'
+    l = Legend(GeoServer, GS_URL, GS_LYRNAME, legend_conf)
+    inputs = (
+        {"type":"Feature", "geometry": {"type":"Point", "coordinates":[500, 500]}, "properties":{"id":0}},
+        42
+    )
+    expect = (458, 458, 542, 542)
+    tools.assert_equals(
+        l.get_bbox_from_feature(*inputs),
+        expect
+    )
+
+def test_bbox_creation_linestring_default_buffer():
+    legend_conf = {}
+    print 'Test bbox creation for a linestring feature, default buffer sizer'
+    l = Legend(GeoServer, GS_URL, GS_LYRNAME, legend_conf)
+    inputs = (
+        {"type":"Feature", "geometry": {"type":"LineString", "coordinates":[[0, 0], [500, 500]]}, "properties":{"id":0}},
+    )
+    expect = (150, 150, 350, 350)
+    tools.assert_equals(
+        l.get_bbox_from_feature(*inputs),
+        expect
+    )
+
+def test_bbox_creation_square_polygon_default_buffer():
+    legend_conf = {}
+    print 'Test bbox creation for a square polygon feature, default buffer sizer'
+    l = Legend(GeoServer, GS_URL, GS_LYRNAME, legend_conf)
+    inputs = (
+        {
+            "type":"Feature",
+            "geometry": {
+                "type":"Polygon",
+                "coordinates":[
+                    [[0, 0], [0, 500], [500, 500], [500, 0], [0, 0]]
+                ]},
+            "properties":{"id":0}},
+    )
+    expect = (400, 400, 600, 600)
+    bbox = l.get_bbox_from_feature(*inputs)
+    tools.assert_equals(
+        l.get_bbox_from_feature(*inputs),
+        expect
+    )
+
+def test_bbox_creation_donut_polygon_default_buffer():
+    legend_conf = {}
+    print 'Test bbox creation for a donut polygon feature, default buffer sizer'
+    l = Legend(GeoServer, GS_URL, GS_LYRNAME, legend_conf)
+    inputs = (
+        {
+            "type":"Feature",
+            "geometry": {
+                "type":"Polygon",
+                "coordinates":[
+                    [[0, 0], [0, 500], [500, 500], [500, 0], [0, 0]],
+                    [[100, 100], [200, 100], [100, 200], [100, 100]]
+                ]},
+            "properties":{"id":0}},
+    )
+    expect = (400, 400, 600, 600)
+    bbox = l.get_bbox_from_feature(*inputs)
+    tools.assert_equals(
+        l.get_bbox_from_feature(*inputs),
+        expect
+    )
+
+def test_bbox_creation_donut_multipolygon_custom_buffer():
+    legend_conf = {}
+    print 'Test bbox creation for a  donut multipolygon feature, custom buffer sizer'
+    l = Legend(GeoServer, GS_URL, GS_LYRNAME, legend_conf)
+    inputs = (
+        {
+            "type":"Feature",
+            "geometry": {
+                "type":"MultiPolygon",
+                "coordinates":[
+                    [[[0, 0], [0, 500], [500, 500], [500, 0], [0, 0]],
+                    [[100, 100], [200, 100], [100, 200], [100, 100]]],
+                    [[[250, 600],[900, 900],[600, 600],[250, 600]]]
+                ]},
+            "properties":{"id":0}
+        },
+        10
+
+    )
+    expect = (490, 490, 510, 510)
+    bbox = l.get_bbox_from_feature(*inputs)
+    tools.assert_equals(
+        l.get_bbox_from_feature(*inputs),
+        expect
+    )
+
+def test_bbox_creation_multilinestring_custom_buffer():
+    legend_conf = {}
+    print 'Test bbox creation for a  donut multipolygon feature, custom buffer sizer'
+    l = Legend(GeoServer, GS_URL, GS_LYRNAME, legend_conf)
+    inputs = (
+        {
+            "type":"Feature",
+            "geometry": {
+                "type":"MultiLineString",
+                "coordinates":[
+                    [[0, 0], [0, 500], [500, 500], [500, 0], [0, 0]],
+                    [[100, 100], [200, 100], [100, 200], [100, 100]],
+                    [[250, 600],[900, 900],[600, 600],[250, 600]]
+                ]},
+            "properties":{"id":0}
+        },
+        10
+
+    )
+    expect = (490, 490, 510, 510)
+    bbox = l.get_bbox_from_feature(*inputs)
+    tools.assert_equals(
+        l.get_bbox_from_feature(*inputs),
+        expect
+    )
