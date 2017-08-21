@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 import os, requests
 
-from PIL import Image, ImageDraw, ImageOps
+from PIL import Image, ImageDraw, ImageOps, ImageFont
 from StringIO import StringIO
 from shapely.geometry import asShape, Point
+import textwrap
 
 class GeoServer(object):
     def __init__(self, url, **kwargs):
@@ -58,7 +59,31 @@ class GeoServer(object):
         )
         data = self._do_wms_get_map(workspace, **params)
         img = Image.open(StringIO(data))
+        #data = self.get_background(bbox)
+        #bck = Image.open(StringIO(data))
+        ##bck.convert('RGBA')
+        ##print bck.mode, img.mode
+        ##bck.convert('RGBA')
+        #bck.paste(img, (0, 0), img)
+        #return bck
         return img
+
+    def get_background(self, bbox):
+        url = 'http://kaart.maaamet.ee/wms/kaart'
+        params = {
+            "layers":'MA-KAART',#"EESTIFOTO",
+            "service":"WMS",
+            "version":"1.1.1",
+            "format":"image/jpeg",
+            "request":"GetMap",
+            "srs":"EPSG:3301",
+            "bbox":','.join(['%s' % coord for coord in bbox]),
+            "width":100,
+            "height":100,
+            "transparent":True
+        }
+        return self._do_query('content', url, **params)
+
 
     def add_additional_filter(self, cql_filter, additional_filter):
         if additional_filter == None:
@@ -168,7 +193,10 @@ class GeoServer(object):
             service='WMS',
             request='GetMap',
             version='1.1.0',
-            format='image/png'
+            format='image/png',
+            #bgcolor='0xF9F5F4'
+            bgcolor='0xffffff'
+
         )
         kwargs.update(params)
         return self._do_query('content', url, **kwargs)
@@ -189,6 +217,7 @@ class GeoServer(object):
         try:
             if callable(fn):
                 return fn()
+            print r.url
             return fn
         except Exception as e:
             raise ValueError(
@@ -200,6 +229,8 @@ class GeoServer(object):
 
 class Legend(object):
     _gutter = 10
+    _size = (100, 100)
+    font = '/usr/share/fonts/truetype/oxygen/Oxygen-Sans-Bold.ttf'
     def __init__(self, cls, url, layername, conf={}):
         self.server = cls(url)
         self.layername = layername
@@ -211,7 +242,7 @@ class Legend(object):
         # NB! srs needs to be set in any case!
         # unless we dive into WMS Capabilities, brrrrr....
 
-    def create_thumbnails(self, path):
+    def create_thumbnails(self, path, add_label=False):
         """Get and merge thumbnails for this configuration.
 
         Do styling things here aswell (e.g. add titles and whatnot)
@@ -236,7 +267,7 @@ class Legend(object):
                     if not self.is_empty_image(thumb):
                         thumb = self.apply_mask(thumb)
                         thumbs.append(thumb)
-            img = self.merge_thumbnails(thumbs)
+            img = self.merge_thumbnails(thumbs, add_label)
             if img != None:
                 img.save(os.path.join(path, filename), "PNG")
 
@@ -245,7 +276,7 @@ class Legend(object):
         width, height = thumb.size
         # antialias
         bigsize = (width * 4, height * 4)
-        linewidth = 12
+        linewidth = 4
         mask = Image.new('RGBA', bigsize, (255, 255, 255, 255))
         draw = ImageDraw.Draw(mask)
         draw.ellipse((0, 0) + bigsize, fill=(27, 29, 28, 255))
@@ -263,23 +294,45 @@ class Legend(object):
             return True
         return False
 
-    def merge_thumbnails(self, thumbs=[]):
+    def draw_label(self, img, location):
+        x, y = location
+        width, height = img.size
+        font = ImageFont.truetype(self.font, 26)
+        draw = ImageDraw.Draw(img)
+        label = textwrap.wrap(self.title, 30)
+        n = len(label)
+        w, h = draw.textsize(self.title, font=font)
+        pad = (height - n * h) / 2
+        y = pad
+        for line in label:
+            # print w, h, x, y, '-->', line
+            draw.text((x, y), line, (27, 29, 28, 255), font=font)
+            y += h
+
+    def merge_thumbnails(self, thumbs=[], add_label=False):
         """Merge getmap thumbnails into one image."""
         n = len(thumbs)
         if n == 0:
             return
         gutter = self._gutter
         width, height = ((100 * n) + gutter * n + gutter, 100 + gutter * 2)
+        if add_label == True:
+            width += 400
         img = Image.new("RGBA", (width, height), (255, 255, 255, 255))
         for i, thumb in enumerate(thumbs):
             location = ((i * 100) + gutter + (i * gutter), gutter)
             img.paste(thumb, location)
+        if add_label == True:
+            i += 1
+            location = ((i * 100) + gutter + (i * gutter), gutter)
+            self.draw_label(img, location)
         return img
 
-    def _create_thumbnail(self, stylename, geometrytype, filter):
+    def _create_thumbnail(self, stylename, geometrytype, additional_filter):
         """Get image data and make a thumbnail for a layer for this style and
         geometry_type.
         """
+        size = self._size
         if self.bbox == None:
             # will try to get bbox from WFS
             feature = self.server.get_feature(
@@ -297,10 +350,10 @@ class Legend(object):
             )
         return self.server.get_map(self.layername, geometrytype, geometry_name,
             bbox, self.srs,
-            transparent=False, additional_filter=None, featureid=None,
-            style=stylename, size=(100, 100))
+            transparent=False, additional_filter=additional_filter, featureid=None,
+            style=stylename, size=size)
 
-    def get_bbox_from_feature(self, feature, buffer_size=100):
+    def get_bbox_from_feature(self, feature, buffer_size=500):
         """Some shapely magic.
 
         NB! geometry coordinates expected to be in meters! This (i.e
@@ -321,6 +374,11 @@ class Legend(object):
             # center bbox over whatever vertice?
             # Nope. get boundary and fall back to linestring :P
             b = shape.boundary
+            bbox = b.bounds
+            bbox_width = bbox[2] - bbox[0]
+            bbox_height = bbox[3] - bbox[1]
+            if bbox_width < buffer_size * 2 and bbox_height < buffer_size * 2:
+                return bbox
             return self.get_bbox_from_feature(
                 {"geometry": b.__geo_interface__, "type":"Feature"},
                 buffer_size)

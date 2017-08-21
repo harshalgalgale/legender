@@ -1,0 +1,93 @@
+{
+    "https://gsavalik.envir.ee/geoserver": [
+        {
+            "eelis:kr_kaitseala": [
+                {"title":"Looduskaitseala", "filter":"tyyp='KLKA'", "srs":"EPSG:3301"},
+                {"title":"Maastikukaitseala", "filter":"tyyp='KMKA'", "srs":"EPSG:3301"},
+                {"title":"Rahvuspark", "filter":"tyyp='KRP'", "srs":"EPSG:3301"},
+                {"title":"Puistu", "filter":"tyyp='PS'", "srs":"EPSG:3301"},
+                {"title":"Kaitsealune park", "filter":"tyyp='KP'", "srs":"EPSG:3301"},
+                {"title":"Uuendamata kaitsekorraga ala", "filter":"tyyp='VK'", "srs":"EPSG:3301"},
+                {"title":"Uuendamata piiridega park, puistu, arboreetrum", "filter":"tyyp='VP'", "srs":"EPSG:3301"}
+            ]
+        }, {
+            "eelis:kr_allikas": [
+                {"title":"Allikad", "srs":"EPSG:3301"}
+            ]
+        }, {
+            "eelis:kr_bka": [
+                {"title":"Lääne-Eesti biosfääri kaitseala", "srs":"EPSG:3301"}
+            ]
+        }, {
+            "eelis:kr_helcom": [
+                {"title":"HELCOMi ala", "srs":"EPSG:3301"}
+            ]
+        }, {
+            "eelis:kr_hoiuala": [
+                {"title":"Hoiualad", "srs":"EPSG:3301"}
+            ]
+        }, {
+            "eelis:kr_hooldatav_skv": [
+                {"title":"Hooldatav sihtkaitsevöönd", "srs":"EPSG:3301"}
+            ]
+        }, {
+            "eelis:kr_jaakreostus": [
+                {"title":"Jääkreostus", "srs":"EPSG:3301"}
+            ]
+        }, {
+            "eelis:kr_jahipiirkond": [
+                {"title":"Jahipiirkonnad", "srs":"EPSG:3301"}
+            ]
+        }, {
+            "eelis:kr_kaitsmata_ala": [
+                {"title":"Kaitsmata alad", "srs":"EPSG:3301"}
+            ]
+        }, {
+            "eelis:kr_karst": [
+                {"title":"Karstialad", "srs":"EPSG:3301"}
+            ]
+        }, {
+            "eelis:kr_linnuala": [
+                {"title":"Natura2000 linnualad", "srs":"EPSG:3301"}
+            ]
+        }, {
+            "eelis:kr_loodusala": [
+                {"title":"Natura2000 loodusalad", "srs":"EPSG:3301"}
+            ]
+        }, {
+            "eelis:kr_looduslik_skv": [
+                {"title":"Looduslik sihtkaitsevöönd", "srs":"EPSG:3301"}
+            ]
+        }, {
+            "eelis:kr_loomad_iii": [
+                {"title":"III kategooria kaitsealused liigid", "srs":"EPSG:3301"}
+            ]
+        }, {
+            "eelis:kr_nitraaditundlik": [
+                {"title":"Nitraaditundlik ala", "srs":"EPSG:3301"}
+            ]
+        }, {
+            "eelis:kr_olulised_alad": [
+                {"title":"Olulised alad", "srs":"EPSG:3301"}
+            ]
+        }, {
+            "eelis:kr_plk": [
+                {"title":"Rannikud ja soolakud", "filter":"strSubstring(pohityyp,0,1)=1", "srs":"EPSG:3301"},
+                {"title":"Ranniku- ja sisemaaluited", "filter":"strSubstring(pohityyp,0,1)=2", "srs":"EPSG:3301"},
+                {"title":"Mageveekogud", "filter":"strSubstring(pohityyp,0,1)=3", "srs":"EPSG:3301"},
+                {"title":"Parasvöötme nõmmed ja võserikud", "filter":"strSubstring(pohityyp,0,1)=4", "srs":"EPSG:3301"},
+                {"title":"Jäiklehised võserikud", "filter":"strSubstring(pohityyp,0,1)=5", "srs":"EPSG:3301"},
+                {"title":"Looduslikud ja poollooduslikud rohumaad", "filter":"strSubstring(pohityyp,0,1)=6", "srs":"EPSG:3301"},
+                {"title":"Sood", "filter":"strSubstring(pohityyp,0,1)=7", "srs":"EPSG:3301"},
+                {"title":"Paljandid ja koopad", "filter":"strSubstring(pohityyp,0,1)=8", "srs":"EPSG:3301"},
+                {"title":"Metsad", "filter":"strSubstring(pohityyp,0,1)=9", "srs":"EPSG:3301"}
+            ]
+        }, {
+            "eelis:kr_piirang": [
+                {"title":"Looduskaitseala piiranguvöönd", "filter":"tyyp='KLKA;P'", "srs":"EPSG:3301"},
+                {"title":"Maastikukaitseala piiranguvöönd", "filter":"tyyp='KMKA;P'", "srs":"EPSG:3301"},
+                {"title":"Rahvuspargi piiranguvöönd", "filter":"tyyp='KRP;P'", "srs":"EPSG:3301"}
+            ]
+        }
+    ]
+}
