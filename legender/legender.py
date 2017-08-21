@@ -216,11 +216,14 @@ class Legend(object):
 
         Do styling things here aswell (e.g. add titles and whatnot)
         """
+        _filter = self.filter or ''
         for stylename in self.styles:
-            filename = '%s__%s.png' % (
-                ''.join([s for s in self.layername if s not in ':.,']),
-                ''.join([s for s in stylename if s not in ':.,'])
-            )
+            parts = [
+                ''.join([s for s in self.layername if s not in ';:.,_']),
+                ''.join([s for s in _filter if s not in ';:.,"\'_']),
+                ''.join([s for s in stylename if s not in ';:.,_'])
+            ]
+            filename = '%s.png' % ('__'.join([p for p in parts if p != '']), )
             thumbs = []
             for geometrytype in ['Point', 'LineString', 'Polygon']:
                 try:
