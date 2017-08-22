@@ -231,8 +231,8 @@ class Legend(object):
     _gutter = 10
     _size = (100, 100)
     font = '/usr/share/fonts/truetype/oxygen/Oxygen-Sans-Bold.ttf'
-    def __init__(self, cls, url, layername, conf={}):
-        self.server = cls(url)
+    def __init__(self, cls, url, layername, conf={}, **kwargs):
+        self.server = cls(url, **kwargs)
         self.layername = layername
         self.title = conf.get('title', layername)
         self.styles = conf.get('styles', ['default'])
@@ -251,7 +251,8 @@ class Legend(object):
         for stylename in self.styles:
             parts = [
                 ''.join([s for s in self.layername if s not in ';:.,_']),
-                ''.join([s for s in _filter if s not in ';:.,"\'_']),
+                # @TODO: make this more intelligent? filename as argument?
+                ''.join([s for s in _filter if s not in ';:.,"\'_ '])[:100],
                 ''.join([s for s in stylename if s not in ';:.,_'])
             ]
             filename = '%s.png' % ('__'.join([p for p in parts if p != '']), )
