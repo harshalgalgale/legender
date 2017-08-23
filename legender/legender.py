@@ -241,11 +241,15 @@ class GeoServer(object):
 
 
 class Legend(object):
-    _gutter = 10
-    _size = (100, 100)
     font = '/usr/share/fonts/truetype/oxygen/Oxygen-Sans-Bold.ttf'
-    def __init__(self, cls, url, layername, conf={}, **kwargs):
+    def __init__(self, cls, url, layername=None, conf={}, **kwargs):
+        self._gutter = 10
+        self._size = (100, 100)
+        self._thumbs = []
         self.server = cls(url, **kwargs)
+        self.update_conf(layername, conf)
+
+    def update_conf(self, layername, conf):
         self.layername = layername
         self.title = conf.get('title', layername)
         self.styles = conf.get('styles', ['default'])
@@ -258,7 +262,7 @@ class Legend(object):
         self.whole_feature = conf.get('whole_feature', True)
         self.background = conf.get('background', None)
 
-    def create_thumbnails(self, path, add_label=False):
+    def create_thumbnails(self, add_label=False):
         """Get and merge thumbnails for this configuration.
 
         Do styling things here aswell (e.g. add titles and whatnot)
@@ -289,7 +293,29 @@ class Legend(object):
                         thumbs.append(thumb)
             img = self.merge_thumbnails(thumbs, add_label)
             if img != None:
-                img.save(os.path.join(path, filename), "PNG")
+                #img.save(os.path.join(path, filename), "PNG")
+                self._thumbs.append({filename:img})
+
+    def save(self, path, filename=None, title=None, group=False):
+        if len(self._thumbs) == 0:
+            return
+        if group == False:
+            for d in self._thumbs:
+                filename = d.keys()[0]
+                thumb = d.values()[0]
+                if title != None:
+                    thumb = self.merge_thumbnails(
+                        [thumb], stack='vertical',
+                        add_label=True, labeltext=title)
+                thumb.save(os.path.join(path, filename))
+        else:
+            _thumbs = []
+            for d in self._thumbs:
+                _thumbs.append(d.values()[0])
+            has_label = title != None
+            img = self.merge_thumbnails(_thumbs, stack='vertical',
+                add_label=has_label, labeltext=title)
+            img.save(os.path.join(path, filename), "PNG")
 
     def apply_mask(self, thumb):
         """Make thumbnail round (that's all hip now, ain't it?), add outline."""
@@ -314,38 +340,87 @@ class Legend(object):
             return True
         return False
 
-    def draw_label(self, img, location):
+    def draw_label(self, img, location, label, size,
+        fontsize=26, wraplength=30, stack='horizontal'):
+        assert stack in ['horizontal', 'vertical']
         x, y = location
         width, height = img.size
-        font = ImageFont.truetype(self.font, 26)
-        draw = ImageDraw.Draw(img)
-        label = textwrap.wrap(self.title, 30)
         n = len(label)
-        w, h = draw.textsize(self.title, font=font)
-        pad = (height - n * h) / 2
-        y = pad
-        for line in label:
-            # print w, h, x, y, '-->', line
-            draw.text((x, y), line, (27, 29, 28, 255), font=font)
-            y += h
+        w, h = size
 
-    def merge_thumbnails(self, thumbs=[], add_label=False):
+        font = ImageFont.truetype(self.font, fontsize)
+        draw = ImageDraw.Draw(img)
+        if stack == 'horizontal':
+            pad_top = (height - h) / 2
+            y = pad_top
+        for line in label:
+            #print w, h, x, y, '-->', line
+            draw.text((x, y), line, (27, 29, 28, 255), font=font)
+            y += h / n
+
+    def calc_label_size(self, img, label, fontsize, wraplength):
+        max_word = max([len(s) for s in label.split(' ')])
+        if wraplength < max_word:
+            wraplength = max_word
+        label = textwrap.wrap(label, wraplength)
+        font = ImageFont.truetype(self.font, fontsize)
+        draw = ImageDraw.Draw(img)
+        wh = [draw.textsize(line, font) for line in label]
+        w = max([size[0] for size in wh])
+        h = sum([size[1] for size in wh])
+        return label, w, h
+
+    def merge_thumbnails(self, thumbs=[], add_label=False, labeltext=None,
+        stack='horizontal'):
         """Merge getmap thumbnails into one image."""
+        assert stack in ['horizontal', 'vertical']
         n = len(thumbs)
         if n == 0:
             return
         gutter = self._gutter
-        width, height = ((100 * n) + gutter * n + gutter, 100 + gutter * 2)
-        if add_label == True:
-            width += 400
+        if stack == 'horizontal':
+            w = sum([t.width for t in thumbs])
+            h = max([t.height for t in thumbs])
+            width, height = (w + gutter * n + gutter, h + gutter * 2)
+        else:
+            w = max([t.width for t in thumbs])
+            h = sum([t.height for t in thumbs])
+            width, height = (w + gutter * 2, h + gutter * n + gutter)
         img = Image.new("RGBA", (width, height), (255, 255, 255, 255))
+        x, y = (gutter, gutter)
         for i, thumb in enumerate(thumbs):
-            location = ((i * 100) + gutter + (i * gutter), gutter)
+            if stack == 'horizontal':
+                location = (x, gutter)
+                x += thumb.width + gutter
+            else:
+                location = (gutter, y)
+                y += thumb.height + gutter
             img.paste(thumb, location)
         if add_label == True:
-            i += 1
-            location = ((i * 100) + gutter + (i * gutter), gutter)
-            self.draw_label(img, location)
+            labeltext = labeltext or self.title
+            label, label_width, label_height = self.calc_label_size(
+                img, labeltext, fontsize=26, wraplength=30)
+            labelsize = (label_width, label_height)
+            if stack == 'horizontal':
+                new_width = label_width + x + gutter
+                if label_height + (2 * gutter) > img.height:
+                    height = img.height + (label_height - img.height) + 2 * gutter
+                location = (x, y)
+                _img = Image.new("RGBA", (new_width, height), (255, 255, 255, 255))
+                _img.paste(img, (0, 0), img)
+                self.draw_label(
+                    _img, location, label, labelsize, stack=stack)
+            else:
+                new_height = label_height + y + gutter
+                if label_width + (2 * gutter) > img.width:
+                    width = img.width + (label_width - img.width) + 2 * gutter
+                location = (gutter, gutter)
+                _img = Image.new("RGBA", (width, new_height), (255, 255, 255, 255))
+                _img.paste(img, (0, label_height + gutter), img)
+                labelsize = (label_width, label_height)
+                self.draw_label(
+                    _img, location, label, labelsize, stack=stack)
+            img = _img
         return img
 
     def _create_thumbnail(self, stylename, geometrytype, additional_filter):
@@ -424,11 +499,7 @@ class Legend(object):
         buffer_size *= 1.2
         return pnt, buffer_size
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Generate map legend thumbnails.')
-    parser.add_argument('-c', type=str, help="Path to the configuration file")
-    args = parser.parse_args()
-    conf_file_path = args.c
+def run(conf_file_path):
     p, f = os.path.split(conf_file_path)
     if os.path.exists(p):
         os.chdir(p)
@@ -445,10 +516,24 @@ if __name__ == '__main__':
                 out_path, )
             for layer in layers:
                 for layername, c in layer.items():
-                    for filterconf in c:
+                    filters = c.get('filters', [])
+                    title = c.get('title', None)
+                    group = c.get('group', False)
+                    filename = '%s.png' % (c.get('filename', layername), )
+                    l = Legend(
+                        GeoServer, server,
+                        username=username, password=password)
+                    for filterconf in filters:
                         if background.get('use', True) == True:
                             filterconf['background'] = background.copy()
-                        l = Legend(
-                            GeoServer, server, layername,
-                            filterconf, username=username, password=password)
-                        l.create_thumbnails(out_path, add_labels)
+                        l.update_conf(layername, filterconf)
+                        l.create_thumbnails(add_labels)
+                    l.save(out_path, filename.lower(), title, group)
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Generate map legend thumbnails.')
+    parser.add_argument('-c', type=str, help="Path to the configuration file")
+    args = parser.parse_args()
+    conf_file_path = args.c
+    run(conf_file_path)
