@@ -1,5 +1,6 @@
 {
     "https://gsavalik.envir.ee/geoserver": {
+        "out_path":".",
         "background":{
             "url": "http://kaart.maaamet.ee/wms/fotokaart",
             "layers": "EESTIFOTO",
@@ -7,189 +8,66 @@
         },
         "layers": [
             {
-                "eelis:kr_kaitseala": [
-                    {"title":"Looduskaitseala", "filter":"tyyp='KLKA'", "srs":"EPSG:3301"},
-                    {"title":"Maastikukaitseala", "filter":"tyyp='KMKA'", "srs":"EPSG:3301"},
-                    {"title":"Rahvuspark", "filter":"tyyp='KRP'", "srs":"EPSG:3301"},
-                    {"title":"Puistu", "filter":"tyyp='PS'", "srs":"EPSG:3301"},
-                    {"title":"Kaitsealune park", "filter":"tyyp='KP'", "srs":"EPSG:3301"},
-                    {"title":"Uuendamata kaitsekorraga ala", "filter":"tyyp='VK'", "srs":"EPSG:3301"},
-                    {"title":"Uuendamata piiridega park, puistu, arboreetrum", "filter":"tyyp='VP'", "srs":"EPSG:3301"}
-                ]
+                "eelis:kr_kaitseala": {
+                    "filters": [
+                        {"title":"Looduskaitseala", "filter":"tyyp='KLKA'", "srs":"EPSG:3301"},
+                        {"title":"Maastikukaitseala", "filter":"tyyp='KMKA'", "srs":"EPSG:3301"},
+                        {"title":"Rahvuspark", "filter":"tyyp='KRP'", "srs":"EPSG:3301"},
+                        {"title":"Puistu", "filter":"tyyp='PS'", "srs":"EPSG:3301"},
+                        {"title":"Kaitsealune park", "filter":"tyyp='KP'", "srs":"EPSG:3301"},
+                        {"title":"Uuendamata kaitsekorraga ala", "filter":"tyyp='VK'", "srs":"EPSG:3301"},
+                        {"title":"Uuendamata piiridega park, puistu, arboreetrum", "filter":"tyyp='VP'", "srs":"EPSG:3301"}
+                    ],
+                    "title":"Kaitsealad",
+                    "group": true
+                }
             }, {
-                "eelis:kr_allikas": [
-                    {"title":"Allikad", "srs":"EPSG:3301"}
-                ]
+                "eelis:kr_allikas": {
+                    "filters": [
+                        {"title":"Allikad", "srs":"EPSG:3301"}
+                    ]
+                }
             }, {
-                "eelis:kr_bka": [
-                    {"title":"Lääne-Eesti biosfääri kaitseala", "srs":"EPSG:3301"}
-                ]
+                "eelis:kr_bka": {
+                    "filters": [
+                        {"title":"Lääne-Eesti biosfääri kaitseala", "srs":"EPSG:3301"}
+                    ],
+                    "title":"Biosfääri kaitsealad"
+                }
             }, {
-                "eelis:kr_helcom": [
-                    {"title":"HELCOMi ala", "srs":"EPSG:3301"}
-                ]
+                "eelis:kr_plk":  {
+                    "filters": [
+                        {"title":"Rannikud ja soolakud", "filter":"strSubstring(pohityyp,0,1)=1", "filename":"rannikud_soolakud", "srs":"EPSG:3301"},
+                        {"title":"Ranniku- ja sisemaaluited", "filter":"strSubstring(pohityyp,0,1)=2", "filename":"luited", "srs":"EPSG:3301"},
+                        {"title":"Mageveekogud", "filter":"strSubstring(pohityyp,0,1)=3", "filename":"mageveekogud", "srs":"EPSG:3301"},
+                        {"title":"Parasvöötme nõmmed ja võserikud", "filter":"strSubstring(pohityyp,0,1)=4", "filename":"nommed_voserikud", "srs":"EPSG:3301"},
+                        {"title":"Jäiklehised võserikud", "filter":"strSubstring(pohityyp,0,1)=5", "filename":"jaiklehised_voserikud", "srs":"EPSG:3301"},
+                        {"title":"Looduslikud ja poollooduslikud rohumaad", "filter":"strSubstring(pohityyp,0,1)=6", "filename":"lood_poollood_rohumaad", "srs":"EPSG:3301"},
+                        {"title":"Sood", "filter":"strSubstring(pohityyp,0,1)=7", "filename":"sood", "srs":"EPSG:3301"},
+                        {"title":"Paljandid ja koopad", "filter":"strSubstring(pohityyp,0,1)=8", "filename":"paljand_koobas", "srs":"EPSG:3301"},
+                        {"title":"Metsad", "filter":"strSubstring(pohityyp,0,1)=9", "filename":"metsad", "srs":"EPSG:3301"}
+                    ]
+                }
             }, {
-                "eelis:kr_hoiuala": [
-                    {"title":"Hoiualad", "srs":"EPSG:3301"}
-                ]
+                "eelis:kr_piirang":  {
+                    "filters": [
+                        {"title":"Looduskaitseala piiranguvöönd", "filter":"tyyp='KLKA;P'", "srs":"EPSG:3301"},
+                        {"title":"Maastikukaitseala piiranguvöönd", "filter":"tyyp='KMKA;P'", "srs":"EPSG:3301"},
+                        {"title":"Rahvuspargi piiranguvöönd", "filter":"tyyp='KRP;P'", "srs":"EPSG:3301"}
+                    ],
+                    "group": true
+                }
             }, {
-                "eelis:kr_hooldatav_skv": [
-                    {"title":"Hooldatav sihtkaitsevöönd", "srs":"EPSG:3301"}
-                ]
-            }, {
-                "eelis:kr_jaakreostus": [
-                    {"title":"Jääkreostus", "srs":"EPSG:3301"}
-                ]
-            }, {
-                "eelis:kr_jahipiirkond": [
-                    {"title":"Jahipiirkonnad", "srs":"EPSG:3301"}
-                ]
-            }, {
-                "eelis:kr_kaitsmata_ala": [
-                    {"title":"Kaitsmata alad", "srs":"EPSG:3301"}
-                ]
-            }, {
-                "eelis:kr_karst": [
-                    {"title":"Karstialad", "srs":"EPSG:3301"}
-                ]
-            }, {
-                "eelis:kr_linnuala": [
-                    {"title":"Natura2000 linnualad", "srs":"EPSG:3301"}
-                ]
-            }, {
-                "eelis:kr_loodusala": [
-                    {"title":"Natura2000 loodusalad", "srs":"EPSG:3301"}
-                ]
-            }, {
-                "eelis:kr_looduslik_skv": [
-                    {"title":"Looduslik sihtkaitsevöönd", "srs":"EPSG:3301"}
-                ]
-            }, {
-                "eelis:kr_loomad_iii": [
-                    {"title":"III kategooria kaitsealused liigid", "srs":"EPSG:3301"}
-                ]
-            }, {
-                "eelis:kr_nitraaditundlik": [
-                    {"title":"Nitraaditundlik ala", "srs":"EPSG:3301"}
-                ]
-            }, {
-                "eelis:kr_olulised_alad": [
-                    {"title":"Olulised alad", "srs":"EPSG:3301"}
-                ]
-            }, {
-                "eelis:kr_plk": [
-                    {"title":"Rannikud ja soolakud", "filter":"strSubstring(pohityyp,0,1)=1", "filename":"rannikud_soolakud", "srs":"EPSG:3301"},
-                    {"title":"Ranniku- ja sisemaaluited", "filter":"strSubstring(pohityyp,0,1)=2", "filename":"luited", "srs":"EPSG:3301"},
-                    {"title":"Mageveekogud", "filter":"strSubstring(pohityyp,0,1)=3", "filename":"mageveekogud", "srs":"EPSG:3301"},
-                    {"title":"Parasvöötme nõmmed ja võserikud", "filter":"strSubstring(pohityyp,0,1)=4", "filename":"nommed_voserikud", "srs":"EPSG:3301"},
-                    {"title":"Jäiklehised võserikud", "filter":"strSubstring(pohityyp,0,1)=5", "filename":"jaiklehised_voserikud", "srs":"EPSG:3301"},
-                    {"title":"Looduslikud ja poollooduslikud rohumaad", "filter":"strSubstring(pohityyp,0,1)=6", "filename":"lood_poollood_rohumaad", "srs":"EPSG:3301"},
-                    {"title":"Sood", "filter":"strSubstring(pohityyp,0,1)=7", "filename":"sood", "srs":"EPSG:3301"},
-                    {"title":"Paljandid ja koopad", "filter":"strSubstring(pohityyp,0,1)=8", "filename":"paljand_koobas", "srs":"EPSG:3301"},
-                    {"title":"Metsad", "filter":"strSubstring(pohityyp,0,1)=9", "filename":"metsad", "srs":"EPSG:3301"}
-                ]
-            }, {
-                "eelis:plk": [
-                    {"title":"Rannikud ja soolakud", "filter":"strSubstring(pohityyp,0,1)=1", "filename":"rannikud_soolakud", "srs":"EPSG:3301"},
-                    {"title":"Ranniku- ja sisemaaluited", "filter":"strSubstring(pohityyp,0,1)=2", "filename":"luited", "srs":"EPSG:3301"},
-                    {"title":"Mageveekogud", "filter":"strSubstring(pohityyp,0,1)=3", "filename":"mageveekogud", "srs":"EPSG:3301"},
-                    {"title":"Parasvöötme nõmmed ja võserikud", "filter":"strSubstring(pohityyp,0,1)=4", "filename":"nommed_voserikud", "srs":"EPSG:3301"},
-                    {"title":"Jäiklehised võserikud", "filter":"strSubstring(pohityyp,0,1)=5", "filename":"jaiklehised_voserikud", "srs":"EPSG:3301"},
-                    {"title":"Looduslikud ja poollooduslikud rohumaad", "filter":"strSubstring(pohityyp,0,1)=6", "filename":"lood_poollood_rohumaad", "srs":"EPSG:3301"},
-                    {"title":"Sood", "filter":"strSubstring(pohityyp,0,1)=7", "filename":"sood", "srs":"EPSG:3301"},
-                    {"title":"Paljandid ja koopad", "filter":"strSubstring(pohityyp,0,1)=8", "filename":"paljand_koobas", "srs":"EPSG:3301"},
-                    {"title":"Metsad", "filter":"strSubstring(pohityyp,0,1)=9", "filename":"metsad", "srs":"EPSG:3301"}
-                ]
-            }, {
-                "eelis:kr_piirang": [
-                    {"title":"Looduskaitseala piiranguvöönd", "filter":"tyyp='KLKA;P'", "srs":"EPSG:3301"},
-                    {"title":"Maastikukaitseala piiranguvöönd", "filter":"tyyp='KMKA;P'", "srs":"EPSG:3301"},
-                    {"title":"Rahvuspargi piiranguvöönd", "filter":"tyyp='KRP;P'", "srs":"EPSG:3301"}
-                ]
-            }, {
-                "eelis:kr_proj_yobj_tsoon": [
-                    {"title":"Projekteeritava üksikobjekti tsoon", "srs":"EPSG:3301"}
-                ]
-            }, {
-                "eelis:kr_puurkaev": [
-                    {"title":"Puurkaevud", "srs":"EPSG:3301"}
-                ]
-            }, {
-                "eelis:kr_puurk_sankaitseala": [
-                    {"title":"Puurkaevude sanitaarkaitsealad", "srs":"EPSG:3301"}
-                ]
-            }, {
-                "eelis:kr_ramsar": [
-                    {"title":"Ramsari konventsiooni alad", "srs":"EPSG:3301"}
-                ]
-            }, {
-                "eelis:kr_reservaat": [
-                    {"title":"Loodusreservaadid", "srs":"EPSG:3301"}
-                ]
-            }, {
-                "eelis:kr_tundlikala": [
-                    {"title":"Tundlik ala", "srs":"EPSG:3301"}
-                ]
-            }, {
-                "eelis:kr_veelase": [
-                    {"title":"Veelaskmed", "srs":"EPSG:3301"}
-                ]
-            }, {
-                "eelis:kr_vep": [
-                    {"title":"Vääriselupaigad", "srs":"EPSG:3301"}
-                ]
-            }, {
-                "eelis:vep_lepingud": [
-                    {"title":"Vääriselupaikade hooldamise lepingud", "srs":"EPSG:3301"}
-                ]
-            }, {
-                "eelis:kr_vooluvesi": [
-                    {"title":"Vooluveekogud", "srs":"EPSG:3301"}
-                ]
-            }, {
-                "eelis:kr_voorliik": [
-                    {"title":"Võõrliikide leiukohad", "srs":"EPSG:3301"}
-                ]
-            }, {
-                "eelis:kr_yksikobjektid": [
-                    {"title":"Üksik puu", "filename":"yksikpuu", "filter":"tyyp in ('üksikpuu (puu)','allee (puu)')", "srs":"EPSG:3301"},
-                    {"title":"Pinnavorm (maa)", "filename":"maapinnavorm", "filter":"tyyp in ('astang (pinnavorm)', 'karst (pinnavorm)', 'koobas (pinnavorm)', 'kraater (pinnavorm)', 'kuppelmaastiku element (pinnavorm)', 'maastikuvorm (pinnavorm)', 'org (pinnavorm)', 'paljand (pinnavorm)', 'vall (pinnavorm)')", "srs":"EPSG:3301"},
-                    {"title":"Pinnavorm (vesi)", "filename":"veepinnavorm", "filter":"tyyp in ('allikas (pinnavorm)','juga (pinnavorm)','järv (pinnavorm)')", "srs":"EPSG:3301"},
-                    {"title":"Rändrahn", "filename":"randrahn", "filter":"tyyp in ('rändrahn (rändrahn)','kivikülv (rändrahn)')", "srs":"EPSG:3301"},
-                    {"title":"Puuderühm, salu", "filename":"puuderyhm", "filter":"tyyp in ('puuderühm, salu (puu)')", "srs":"EPSG:3301"}
-                ]
-            }, {
-                "eelis:kr_yksikobjekti_kaitsetsoon": [
-                    {"title":"Üksikobjekti kaitsetsoon", "srs":"EPSG:3301"}
-                ]
-            }, {
-                "eelis:lohejoed": [
-                    {"title":"Lõhejõed", "srs":"EPSG:3301"}
-                ]
-            }, {
-                "eelis:lohi_karp_veekogud": [
-                    {"title":"Lõheliste ja karpkalade veekogud", "srs":"EPSG:3301"}
-                ]
-            }, {
-                "eelis:nta_al_pv": [
-                    {"title":"Nitraaditundliku ala allika piiranguvöönd", "srs":"EPSG:3301"}
-                ]
-            }, {
-                "eelis:sood": [
-                    {"title":"Sood", "srs":"EPSG:3301"}
-                ]
-            }, {
-                "eelis:tahelepanuvaarne": [
-                    {"title":"Tähelepanuväärne", "srs":"EPSG:3301"}
-                ]
-            }, {
-                "eelis:yrg": [
-                    {"title":"Ürglooduse objektid", "srs":"EPSG:3301"}
-                ]
-            }, {
-                "keskkonnainfo:ristipuud": [
-                    {"title":"Ristipuud", "srs":"EPSG:3301"}
-                ]
+                "eelis:kr_yksikobjektid":  {
+                    "filters": [
+                        {"title":"Üksik puu", "filename":"yksikpuu", "filter":"tyyp in ('üksikpuu (puu)','allee (puu)')", "srs":"EPSG:3301"},
+                        {"title":"Pinnavorm (maa)", "filename":"maapinnavorm", "filter":"tyyp in ('astang (pinnavorm)', 'karst (pinnavorm)', 'koobas (pinnavorm)', 'kraater (pinnavorm)', 'kuppelmaastiku element (pinnavorm)', 'maastikuvorm (pinnavorm)', 'org (pinnavorm)', 'paljand (pinnavorm)', 'vall (pinnavorm)')", "srs":"EPSG:3301"},
+                        {"title":"Pinnavorm (vesi)", "filename":"veepinnavorm", "filter":"tyyp in ('allikas (pinnavorm)','juga (pinnavorm)','järv (pinnavorm)')", "srs":"EPSG:3301"},
+                        {"title":"Rändrahn", "filename":"randrahn", "filter":"tyyp in ('rändrahn (rändrahn)','kivikülv (rändrahn)')", "srs":"EPSG:3301"},
+                        {"title":"Puuderühm, salu", "filename":"puuderyhm", "filter":"tyyp in ('puuderühm, salu (puu)')", "srs":"EPSG:3301"}
+                    ],
+                    "title": "Kaitstavad üksikobjektid"
+                }
             }
         ]
     }
