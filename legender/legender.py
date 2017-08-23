@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
-import os, requests
+import argparse, json, os, requests
 
 from PIL import Image, ImageDraw, ImageOps, ImageFont
 from StringIO import StringIO
-from shapely.geometry import asShape, Point
+from shapely.geometry import asShape, Point, LineString
 import textwrap
 
 class GeoServer(object):
     def __init__(self, url, **kwargs):
         self.session = requests.Session()
-        if "username" in kwargs:
+        if "username" in kwargs and kwargs['username'] != None:
             _user = kwargs.pop("username")
             _pass = kwargs.pop("password")
             self.session.auth = (_user, _pass)
@@ -36,7 +36,8 @@ class GeoServer(object):
 
     def get_map(self, layername, geometrytype, geometryname, bbox, srs,
         transparent=True, additional_filter=None, featureid=None,
-        style='default', size=(100, 100), geometrytype_filtering=True):
+        style='default', size=(100, 100), geometrytype_filtering=True,
+        bckground_conf=None):
         """Query WMS endpoint for a piece of map layer to be used for legend."""
         workspace, _ = self.split_layername(layername)
         if featureid != None:
@@ -59,30 +60,42 @@ class GeoServer(object):
         )
         data = self._do_wms_get_map(workspace, **params)
         img = Image.open(StringIO(data))
-        #data = self.get_background(bbox)
-        #bck = Image.open(StringIO(data))
-        ##bck.convert('RGBA')
-        ##print bck.mode, img.mode
-        ##bck.convert('RGBA')
+        if bckground_conf != None:
+            data = self.get_background(bckground_conf, srs, bbox, size)
+            bck = Image.open(StringIO(data))
+        else:
+            bck = None
+        #bck.convert('RGBA')
+        #print bck.mode, img.mode
+        #bck.convert('RGBA')
         #bck.paste(img, (0, 0), img)
         #return bck
-        return img
+        return img, bck
 
-    def get_background(self, bbox):
-        url = 'http://kaart.maaamet.ee/wms/kaart'
+    def get_background(self, bckground_conf, srs, bbox, size):
+        #url = 'http://kaart.maaamet.ee/wms/fotokaart'
+        width, height = size
+        url = bckground_conf['url']
+        layers = bckground_conf['layers']
         params = {
-            "layers":'MA-KAART',#"EESTIFOTO",
+            "layers": layers,
             "service":"WMS",
             "version":"1.1.1",
             "format":"image/jpeg",
             "request":"GetMap",
-            "srs":"EPSG:3301",
+            "srs":srs,
             "bbox":','.join(['%s' % coord for coord in bbox]),
-            "width":100,
-            "height":100,
+            "width":width,
+            "height":height,
             "transparent":True
         }
-        return self._do_query('content', url, **params)
+        r = requests.get(
+            url,
+            params=params
+        )
+        print r.url
+        r.raise_for_status()
+        return r.content
 
 
     def add_additional_filter(self, cql_filter, additional_filter):
@@ -241,6 +254,9 @@ class Legend(object):
         self.srs = conf.get('srs', None)
         # NB! srs needs to be set in any case!
         # unless we dive into WMS Capabilities, brrrrr....
+        self.filename = conf.get('filename', None)
+        self.whole_feature = conf.get('whole_feature', True)
+        self.background = conf.get('background', None)
 
     def create_thumbnails(self, path, add_label=False):
         """Get and merge thumbnails for this configuration.
@@ -248,24 +264,27 @@ class Legend(object):
         Do styling things here aswell (e.g. add titles and whatnot)
         """
         _filter = self.filter or ''
+        _filename = self.filename or _filter[:100]
         for stylename in self.styles:
             parts = [
                 ''.join([s for s in self.layername if s not in ';:.,_']),
-                # @TODO: make this more intelligent? filename as argument?
-                ''.join([s for s in _filter if s not in ';:.,"\'_ '])[:100],
+                ''.join([s for s in _filename if s not in ';:.,"\'_ ']),
                 ''.join([s for s in stylename if s not in ';:.,_'])
             ]
             filename = '%s.png' % ('__'.join([p for p in parts if p != '']), )
             thumbs = []
             for geometrytype in ['Point', 'LineString', 'Polygon']:
                 try:
-                    thumb = self._create_thumbnail(
+                    thumb, bck = self._create_thumbnail(
                         stylename, geometrytype, self.filter
                     )
                 except AssertionError as ae:
                     pass
                 else:
                     if not self.is_empty_image(thumb):
+                        if bck != None:
+                            bck.paste(thumb, (0,0), thumb)
+                            thumb = bck
                         thumb = self.apply_mask(thumb)
                         thumbs.append(thumb)
             img = self.merge_thumbnails(thumbs, add_label)
@@ -349,10 +368,11 @@ class Legend(object):
             raise AttributeError(
                 "SRS (e.g 'EPSG:4326') not supplied in init conf, or undetermined from WFS request."
             )
+        transparent = self.background != None
         return self.server.get_map(self.layername, geometrytype, geometry_name,
             bbox, self.srs,
-            transparent=False, additional_filter=additional_filter, featureid=None,
-            style=stylename, size=size)
+            transparent=transparent, additional_filter=additional_filter, featureid=None,
+            style=stylename, size=size, bckground_conf=self.background)
 
     def get_bbox_from_feature(self, feature, buffer_size=500):
         """Some shapely magic.
@@ -372,22 +392,63 @@ class Legend(object):
             # center bbox over 1/2 distance of line
             pnt = shape.interpolate(0.5, normalized=True)
         elif geometry_type == 'Polygon':
-            # center bbox over whatever vertice?
-            # Nope. get boundary and fall back to linestring :P
-            b = shape.boundary
-            bbox = b.bounds
-            bbox_width = bbox[2] - bbox[0]
-            bbox_height = bbox[3] - bbox[1]
-            if bbox_width < buffer_size * 2 and bbox_height < buffer_size * 2:
-                return bbox
-            return self.get_bbox_from_feature(
-                {"geometry": b.__geo_interface__, "type":"Feature"},
-                buffer_size)
+            if self.whole_feature != True:
+                b = shape.boundary
+                bbox = b.bounds
+                bbox_width = bbox[2] - bbox[0]
+                bbox_height = bbox[3] - bbox[1]
+                if bbox_width < buffer_size * 2 and bbox_height < buffer_size * 2:
+                    self.whole_feature = True
+                else:
+                    return self.get_bbox_from_feature(
+                        {"geometry": b.__geo_interface__, "type":"Feature"},
+                        buffer_size)
+            if self.whole_feature == True:
+                pnt, buffer_size = self._get_bbox_from_feature(shape)
         elif geometry_type.startswith('Multi'):
-            # HA-HA-HA :D
-            # what the ???
-            geom = shape.geoms[0]
-            return self.get_bbox_from_feature(
-                {"geometry": geom.__geo_interface__, "type":"Feature"},
-                buffer_size)
+            if self.whole_feature == True:
+                pnt, buffer_size = self._get_bbox_from_feature(shape)
+            else:
+                # HA-HA-HA :D
+                # what the ???
+                geom = shape.geoms[0]
+                return self.get_bbox_from_feature(
+                    {"geometry": geom.__geo_interface__, "type":"Feature"},
+                    buffer_size)
         return pnt.buffer(buffer_size).bounds
+
+    def _get_bbox_from_feature(self, shape):
+        pnt = shape.centroid
+        _, _, xmax, ymax = shape.bounds
+        buffer_size = LineString([pnt, Point(xmax, ymax)]).length
+        buffer_size *= 1.2
+        return pnt, buffer_size
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Generate map legend thumbnails.')
+    parser.add_argument('-c', type=str, help="Path to the configuration file")
+    args = parser.parse_args()
+    conf_file_path = args.c
+    p, f = os.path.split(conf_file_path)
+    if os.path.exists(p):
+        os.chdir(p)
+    with open(f) as _c:
+        conf = json.loads(_c.read())
+        for server, serverconf in conf.items():
+            layers = serverconf.get('layers', [])
+            background = serverconf.get('background', None)
+            out_path = os.path.realpath(serverconf.get('out_path', '.'))
+            username = conf.get('auth', {}).get('username', None)
+            password = conf.get('auth', {}).get('password', None)
+            add_labels = serverconf.get('add_labels', True)
+            assert os.path.exists(out_path), "out_path %s does not exist" % (
+                out_path, )
+            for layer in layers:
+                for layername, c in layer.items():
+                    for filterconf in c:
+                        if background.get('use', True) == True:
+                            filterconf['background'] = background.copy()
+                        l = Legend(
+                            GeoServer, server, layername,
+                            filterconf, username=username, password=password)
+                        l.create_thumbnails(out_path, add_labels)
