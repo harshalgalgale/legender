@@ -244,7 +244,6 @@ class Legend(object):
     font = '/usr/share/fonts/truetype/oxygen/Oxygen-Sans-Bold.ttf'
     def __init__(self, cls, url, layername=None, conf={}, **kwargs):
         self._gutter = 10
-        self._size = (100, 100)
         self._thumbs = []
         self.server = cls(url, **kwargs)
         self.update_conf(layername, conf)
@@ -261,6 +260,7 @@ class Legend(object):
         self.filename = conf.get('filename', None)
         self.whole_feature = conf.get('whole_feature', True)
         self.background = conf.get('background', None)
+        self._size = conf.get("size", (50, 50))
 
     def create_thumbnails(self, add_label=False):
         """Get and merge thumbnails for this configuration.
@@ -271,7 +271,7 @@ class Legend(object):
         _filename = self.filename or _filter[:100]
         for stylename in self.styles:
             parts = [
-                ''.join([s for s in self.layername if s not in ';:.,_']),
+                ''.join([s for s in self.layername if s not in ';.,']),
                 ''.join([s for s in _filename if s not in ';:.,"\'_ ']),
                 ''.join([s for s in stylename if s not in ';:.,_'])
             ]
@@ -403,11 +403,13 @@ class Legend(object):
             labelsize = (label_width, label_height)
             if stack == 'horizontal':
                 new_width = label_width + x + gutter
+                location = (x, y)
+                position = (0, 0)
                 if label_height + (2 * gutter) > img.height:
                     height = img.height + (label_height - img.height) + 2 * gutter
-                location = (x, y)
+                    position = (0, (height - img.height) / 2)
                 _img = Image.new("RGBA", (new_width, height), (255, 255, 255, 255))
-                _img.paste(img, (0, 0), img)
+                _img.paste(img, position, img)
                 self.draw_label(
                     _img, location, label, labelsize, stack=stack)
             else:
@@ -509,9 +511,11 @@ def run(conf_file_path):
             layers = serverconf.get('layers', [])
             background = serverconf.get('background', None)
             out_path = os.path.realpath(serverconf.get('out_path', '.'))
-            username = conf.get('auth', {}).get('username', None)
-            password = conf.get('auth', {}).get('password', None)
+            username = serverconf.get('auth', {}).get('username', None)
+            password = serverconf.get('auth', {}).get('password', None)
             add_labels = serverconf.get('add_labels', True)
+            width = serverconf.get('size', {}).get('width', None)
+            height = serverconf.get('size', {}).get('height', None)
             assert os.path.exists(out_path), "out_path %s does not exist" % (
                 out_path, )
             for layer in layers:
@@ -526,6 +530,9 @@ def run(conf_file_path):
                     for filterconf in filters:
                         if background.get('use', True) == True:
                             filterconf['background'] = background.copy()
+                        if width != None and height != None and \
+                            not 'size' in filterconf:
+                            filterconf['size'] = (width, height)
                         l.update_conf(layername, filterconf)
                         l.create_thumbnails(add_labels)
                     l.save(out_path, filename.lower(), title, group)
