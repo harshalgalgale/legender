@@ -228,9 +228,9 @@ class GeoServer(object):
         r.raise_for_status()
         fn = getattr(r, returns)
         try:
+            print r.url
             if callable(fn):
                 return fn()
-            print r.url
             return fn
         except Exception as e:
             raise ValueError(
